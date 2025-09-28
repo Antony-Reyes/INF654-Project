@@ -1,0 +1,162 @@
+{
+  "games": {
+    "lastDayOnEarth": {
+      "id": "ldoe",
+      "name": "Last Day on Earth (LDOE)",
+      "description": "Survival zombie game with settlement building",
+      "icon": "images/games/ldoe-icon.png",
+      "active": true,
+      "sections": {
+        "settlementLocations": {
+          "id": "settlement",
+          "name": "Settlement Locations Settings",
+          "description": "Timers for various settlement locations and activities",
+          "reminders": {
+            "portLaboratory": {
+              "id": "port_lab",
+              "name": "Port Laboratory",
+              "description": "Laboratory research and experiments timer",
+              "defaultTimer": "04:00:00",
+              "category": "research",
+              "priority": "high",
+              "active": true
+            },
+            "portSewers": {
+              "id": "port_sewers",
+              "name": "Port Sewers",
+              "description": "Sewer exploration cooldown period",
+              "defaultTimer": "12:00:00",
+              "category": "exploration",
+              "priority": "medium",
+              "active": false
+            },
+            "farm": {
+              "id": "farm",
+              "name": "Farm",
+              "description": "Crop harvest and farming activities",
+              "defaultTimer": "02:30:00",
+              "category": "resources",
+              "priority": "high",
+              "active": true
+            },
+            "motel": {
+              "id": "motel",
+              "name": "Motel",
+              "description": "Motel location reset timer",
+              "defaultTimer": "24:00:00",
+              "category": "location",
+              "priority": "low",
+              "active": false
+            },
+            "abandonedFactory": {
+              "id": "abandoned_factory",
+              "name": "Abandoned Factory",
+              "description": "Factory exploration and loot gathering",
+              "defaultTimer": "08:00:00",
+              "category": "exploration",
+              "priority": "medium",
+              "active": true
+            },
+            "gasStation": {
+              "id": "gas_station",
+              "name": "Gas Station",
+              "description": "Gas station location reset timer",
+              "defaultTimer": "06:00:00",
+              "category": "location",
+              "priority": "medium",
+              "active": false
+            },
+            "transportHub": {
+              "id": "transport_hub",
+              "name": "Transport Hub",
+              "description": "Transport delivery and shipping timer",
+              "defaultTimer": "03:00:00",
+              "category": "transport",
+              "priority": "high",
+              "active": true
+            },
+            "dailyLoot": {
+              "id": "daily_loot",
+              "name": "Daily Loot",
+              "description": "Daily reward collection timer",
+              "defaultTimer": "24:00:00",
+              "category": "rewards",
+              "priority": "high",
+              "active": true
+            }
+          }
+        },
+        "currentProgress": {
+          "id": "progress",
+          "name": "Current Progress Settings",
+          "description": "Timers for construction and upgrade progress",
+          "reminders": {
+            "storehouse": {
+              "id": "storehouse",
+              "name": "Storehouse",
+              "description": "Storage facility upgrade timer",
+              "defaultTimer": "01:30:00",
+              "category": "construction",
+              "priority": "high",
+              "active": true
+            },
+            "woodshop": {
+              "id": "woodshop",
+              "name": "Woodshop",
+              "description": "Woodworking projects and crafting",
+              "defaultTimer": "02:00:00",
+              "category": "crafting",
+              "priority": "medium",
+              "active": false
+            },
+            "foundry": {
+              "id": "foundry",
+              "name": "Foundry",
+              "description": "Metal smelting and processing",
+              "defaultTimer": "03:30:00",
+              "category": "crafting",
+              "priority": "high",
+              "active": true
+            },
+            "assembly": {
+              "id": "assembly",
+              "name": "Assembly",
+              "description": "Assembly line production timer",
+              "defaultTimer": "05:00:00",
+              "category": "production",
+              "priority": "medium",
+              "active": false
+            },
+            "workshop": {
+              "id": "workshop",
+              "name": "Workshop",
+              "description": "General workshop crafting timer",
+              "defaultTimer": "01:45:00",
+              "category": "crafting",
+              "priority": "medium",
+              "active": true
+            }
+          }
+        }
+      }
+    }
+  },
+  "settings": {
+    "notifications": {
+      "enabled": true,
+      "sound": true,
+      "vibrate": true,
+      "showInAdvance": 300
+    },
+    "appearance": {
+      "theme": "auto",
+      "compactMode": false
+    },
+    "backup": {
+      "autoBackup": true,
+      "backupInterval": "daily"
+    }
+  },
+  "version": "1.0.0",
+  "lastUpdated": "2024-09-28T00:00:00.000Z"
+}
