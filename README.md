@@ -46,9 +46,9 @@ Files Structure:
         reset.css                 # (Optional but recommended) Normalizes browser defaults
     /images
         /icons                    # Required for PWA installation (different sizes: 48x48, 96x96, 192x192, 512x512, etc.)
+        logo.png                  # Branding logo, displayed in-app or on splash screen
     /js
         app.js                    # Initializes app, loads data, coordinates between UI & reminders
-        service-worker.js         # Manages offline caching, assets storage, notifications
         reminders.js              # Business logic for reminders (CRUD operations: add/edit/delete/get)
         ui.js                     # DOM rendering: dynamically generates game sections & reminders
     /data
@@ -57,6 +57,7 @@ Files Structure:
     index.html                    # Main app shell (single-page PWA structure)
     manifest.json                 # PWA metadata: app name, icons, theme, display mode
     README.md                     # Documentation on setup, features, and usage
+    service-worker.js         # Manages offline caching, assets storage, notifications
 
 I tested the protytpe example UI using a local server trough visual studio code. I used bash within the terminal and used the following codes:
 
@@ -64,4 +65,5 @@ http-server -p 8080         (To activate the server)
 
 http://127.0.0.1:8080           (This is used to see the html website, used within the URL search of google)
 
-S
+New features as of 10/27/2025
+The app now Works-Offline and it is downloadable on any device.
