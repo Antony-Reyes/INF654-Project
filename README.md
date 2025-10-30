@@ -67,3 +67,4 @@ http://127.0.0.1:8080           (This is used to see the html website, used with
 
 New features as of 10/27/2025
 The app now Works-Offline and it is downloadable on any device.
+The download button for the app is within the search URL of the app's website.
