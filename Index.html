@@ -3,7 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Game Reminder Notifications PWA for LDOE and other games">
+  <meta name="theme-color" content="#16213e">
+  
   <title>INF654 Reminder App</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  
+  <!-- Apple Touch Icon for iOS -->
+  <link rel="apple-touch-icon" href="/images/icons/icon-192x192.png">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/icons/icon-48x48.png">
+  
+  <!-- Stylesheets -->
   <link rel="stylesheet" href="css/reset.css">
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -310,225 +324,6 @@
     <p>INF654 Prototype – PWA Reminder App | Visual Mockup v1.0</p>
   </footer>
 
-  <script src="js/app.js"></script>
-</body>
-</html>
-
-          <!-- Current Progress Section -->
-          <div class="subsection">
-            <h4>⚡ Current Progress Settings</h4>
-            <ul>
-              <li>
-                <span class="reminder-name">Storehouse</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">01:30:00</span>
-                  <button class="btn-toggle" onclick="toggleButton(this)">On</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Woodshop</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">02:00:00</span>
-                  <button class="btn-toggle off" onclick="toggleButton(this)">Off</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Foundry</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">03:30:00</span>
-                  <button class="btn-toggle" onclick="toggleButton(this)">On</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Assembly</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">05:00:00</span>
-                  <button class="btn-toggle off" onclick="toggleButton(this)">Off</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Workshop</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">01:45:00</span>
-                  <button class="btn-toggle" onclick="toggleButton(this)">On</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Game 2: Clash of Clans - Coming Soon -->
-        <div class="game">
-          <span class="game-status status-coming-soon">🔄 Coming Soon</span>
-          <h3>Clash of Clans</h3>
-
-          <!-- Army Training Section -->
-          <div class="subsection coming-soon-overlay">
-            <h4>⚔️ Army Training Settings</h4>
-            <ul>
-              <li>
-                <span class="reminder-name">Barbarian Training</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">00:05:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Archer Training</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">00:06:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Dragon Training</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">01:30:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Spell Brewing</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">00:20:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-            </ul>
-          </div>
-
-          <!-- Building Upgrades Section -->
-          <div class="subsection coming-soon-overlay">
-            <h4>🏗️ Building Upgrades</h4>
-            <ul>
-              <li>
-                <span class="reminder-name">Town Hall Upgrade</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">168:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Gold Mine Upgrade</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">24:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Defense Tower Upgrade</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">12:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Game 3: Boom Beach - Coming Soon -->
-        <div class="game">
-          <span class="game-status status-coming-soon">🔄 Coming Soon</span>
-          <h3>Boom Beach</h3>
-
-          <!-- Operations Section -->
-          <div class="subsection coming-soon-overlay">
-            <h4>💥 Operations Settings</h4>
-            <ul>
-              <li>
-                <span class="reminder-name">Task Force Operation</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">24:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Mega Crab Event</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">72:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Dr. Terror</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">24:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-            </ul>
-          </div>
-
-          <!-- Resource Production Section -->
-          <div class="subsection coming-soon-overlay">
-            <h4>⚡ Resource Production</h4>
-            <ul>
-              <li>
-                <span class="reminder-name">Wood Production</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">04:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Stone Production</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">04:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Iron Production</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">04:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Gold Production</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">04:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Add New Game Card -->
-        <div class="add-game-card" onclick="showAddGameDialog()">
-          <div class="add-game-icon">➕</div>
-          <h3>Add New Game</h3>
-          <p>Customize reminders for any game</p>
-        </div>
-
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <p>INF654 Prototype – PWA Reminder App | Visual Mockup v1.0</p>
-  </footer>
-
   <script>
     // Interactive functionality for visual prototype
     function toggleButton(button) {
@@ -585,6 +380,36 @@
         display.setAttribute('data-tooltip', 'Default timer duration');
       });
     });
+  </script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    // Register Service Worker for PWA functionality
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then((registration) => {
+            console.log('✅ Service Worker registered successfully:', registration.scope);
+            
+            // Check for updates
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              console.log('🔄 New Service Worker found!');
+              
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('📦 New content is available; please refresh.');
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            console.error('❌ Service Worker registration failed:', error);
+          });
+      });
+    } else {
+      console.warn('⚠️ Service Workers are not supported in this browser.');
+    }
   </script>
 </body>
 </html>

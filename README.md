@@ -46,7 +46,6 @@ Files Structure:
         reset.css                 # (Optional but recommended) Normalizes browser defaults
     /images
         /icons                    # Required for PWA installation (different sizes: 48x48, 96x96, 192x192, 512x512, etc.)
-        logo.png                   # Branding logo, displayed in-app or on splash screen
     /js
         app.js                    # Initializes app, loads data, coordinates between UI & reminders
         service-worker.js         # Manages offline caching, assets storage, notifications
@@ -65,3 +64,4 @@ http-server -p 8080         (To activate the server)
 
 http://127.0.0.1:8080           (This is used to see the html website, used within the URL search of google)
 
+S
