@@ -25,132 +25,208 @@
   <header>
     <img src="images/logo.png" alt="App Logo" class="app-logo">
     <h1>Game Reminder Prototype</h1>
-    <p>INF654 Project - Visual Example</p>
+    <p>INF654 Project - Firebase & IndexedDB Integration</p>
+    <!-- Online/Offline Status Indicator -->
+    <div id="connection-status" class="status-indicator">
+      <span id="status-icon">🌐</span>
+      <span id="status-text">Online</span>
+    </div>
   </header>
 
   <main>
     <section id="games">
       <h2>🎮 Game Collection</h2>
-      <div class="games-grid">
+      
+      <!-- Sync Status Bar -->
+      <div id="sync-status" class="sync-status-bar" style="display: none;">
+        <span id="sync-message">Syncing data...</span>
+      </div>
+
+      <div class="games-grid" id="games-container">
         
         <!-- Game 1: Last Day On Earth (LDOE) - Active -->
-        <div class="game">
+        <div class="game" data-game-id="ldoe">
           <span class="game-status status-active">✅ Active</span>
           <h3>Last Day On Earth (LDOE)</h3>
 
           <!-- Settlement Locations Section -->
-          <div class="subsection">
+          <div class="subsection" data-subsection-id="settlement-locations">
             <h4>🏠 Settlement Locations Settings</h4>
-            <ul>
-              <li>
+            <ul class="reminders-list">
+              <li data-reminder-id="port-laboratory">
                 <span class="reminder-name">Port Laboratory</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">04:00:00</span>
-                  <button class="btn-toggle" onclick="toggleButton(this)">On</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="4">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="0">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
-              <li>
+              <li data-reminder-id="port-sewers">
                 <span class="reminder-name">Port Sewers</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">12:00:00</span>
-                  <button class="btn-toggle off" onclick="toggleButton(this)">Off</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="12">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="0">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
-              <li>
+              <li data-reminder-id="farm">
                 <span class="reminder-name">Farm</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">02:30:00</span>
-                  <button class="btn-toggle" onclick="toggleButton(this)">On</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="2">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="30">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
-              <li>
+              <li data-reminder-id="motel">
                 <span class="reminder-name">Motel</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">24:00:00</span>
-                  <button class="btn-toggle off" onclick="toggleButton(this)">Off</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="24">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="0">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
-              <li>
+              <li data-reminder-id="abandoned-factory">
                 <span class="reminder-name">Abandoned Factory</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">08:00:00</span>
-                  <button class="btn-toggle" onclick="toggleButton(this)">On</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="8">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="0">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
-              <li>
+              <li data-reminder-id="gas-station">
                 <span class="reminder-name">Gas Station</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">06:00:00</span>
-                  <button class="btn-toggle off" onclick="toggleButton(this)">Off</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="6">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="0">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
-              <li>
+              <li data-reminder-id="transport-hub">
                 <span class="reminder-name">Transport Hub</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">03:00:00</span>
-                  <button class="btn-toggle" onclick="toggleButton(this)">On</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="3">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="0">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
-              <li>
+              <li data-reminder-id="daily-loot">
                 <span class="reminder-name">Daily Loot</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">24:00:00</span>
-                  <button class="btn-toggle" onclick="toggleButton(this)">On</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="24">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="0">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
             </ul>
           </div>
 
           <!-- Current Progress Section -->
-          <div class="subsection">
+          <div class="subsection" data-subsection-id="current-progress">
             <h4>⚡ Current Progress Settings</h4>
-            <ul>
-              <li>
+            <ul class="reminders-list">
+              <li data-reminder-id="storehouse">
                 <span class="reminder-name">Storehouse</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">01:30:00</span>
-                  <button class="btn-toggle" onclick="toggleButton(this)">On</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="1">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="30">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
-              <li>
+              <li data-reminder-id="woodshop">
                 <span class="reminder-name">Woodshop</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">02:00:00</span>
-                  <button class="btn-toggle off" onclick="toggleButton(this)">Off</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="2">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="0">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
-              <li>
+              <li data-reminder-id="foundry">
                 <span class="reminder-name">Foundry</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">03:30:00</span>
-                  <button class="btn-toggle" onclick="toggleButton(this)">On</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="3">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="30">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
-              <li>
+              <li data-reminder-id="assembly">
                 <span class="reminder-name">Assembly</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">05:00:00</span>
-                  <button class="btn-toggle off" onclick="toggleButton(this)">Off</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="5">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="0">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
-              <li>
+              <li data-reminder-id="workshop">
                 <span class="reminder-name">Workshop</span>
                 <div class="reminder-controls">
-                  <span class="timer-display">01:45:00</span>
-                  <button class="btn-toggle" onclick="toggleButton(this)">On</button>
-                  <button class="btn-reset" onclick="resetTimer(this)">Reset</button>
+                  <input type="number" class="timer-input" placeholder="HH" min="0" max="999" value="1">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="MM" min="0" max="59" value="45">
+                  <span class="timer-separator">:</span>
+                  <input type="number" class="timer-input" placeholder="SS" min="0" max="59" value="0">
+                  <button class="btn-toggle off" data-enabled="false">Off</button>
+                  <button class="btn-save">Save</button>
+                  <button class="btn-reset">Reset</button>
                 </div>
               </li>
             </ul>
@@ -158,154 +234,38 @@
         </div>
 
         <!-- Game 2: Clash of Clans - Coming Soon -->
-        <div class="game">
+        <div class="game" data-game-id="clash-of-clans">
           <span class="game-status status-coming-soon">🔄 Coming Soon</span>
           <h3>Clash of Clans</h3>
 
           <!-- Army Training Section -->
           <div class="subsection coming-soon-overlay">
             <h4>⚔️ Army Training Settings</h4>
-            <ul>
-              <li>
-                <span class="reminder-name">Barbarian Training</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">00:05:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Archer Training</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">00:06:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Dragon Training</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">01:30:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Spell Brewing</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">00:20:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-            </ul>
+            <p class="coming-soon-text">Feature will be available in future updates</p>
           </div>
 
           <!-- Building Upgrades Section -->
           <div class="subsection coming-soon-overlay">
             <h4>🏗️ Building Upgrades</h4>
-            <ul>
-              <li>
-                <span class="reminder-name">Town Hall Upgrade</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">168:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Gold Mine Upgrade</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">24:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Defense Tower Upgrade</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">12:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-            </ul>
+            <p class="coming-soon-text">Feature will be available in future updates</p>
           </div>
         </div>
 
         <!-- Game 3: Boom Beach - Coming Soon -->
-        <div class="game">
+        <div class="game" data-game-id="boom-beach">
           <span class="game-status status-coming-soon">🔄 Coming Soon</span>
           <h3>Boom Beach</h3>
 
           <!-- Operations Section -->
           <div class="subsection coming-soon-overlay">
             <h4>💥 Operations Settings</h4>
-            <ul>
-              <li>
-                <span class="reminder-name">Task Force Operation</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">24:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Mega Crab Event</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">72:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Dr. Terror</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">24:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-            </ul>
+            <p class="coming-soon-text">Feature will be available in future updates</p>
           </div>
 
           <!-- Resource Production Section -->
           <div class="subsection coming-soon-overlay">
             <h4>⚡ Resource Production</h4>
-            <ul>
-              <li>
-                <span class="reminder-name">Wood Production</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">04:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Stone Production</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">04:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Iron Production</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">04:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-              <li>
-                <span class="reminder-name">Gold Production</span>
-                <div class="reminder-controls">
-                  <span class="timer-display">04:00:00</span>
-                  <button class="btn-toggle off">Off</button>
-                  <button class="btn-reset">Reset</button>
-                </div>
-              </li>
-            </ul>
+            <p class="coming-soon-text">Feature will be available in future updates</p>
           </div>
         </div>
 
@@ -321,66 +281,14 @@
   </main>
 
   <footer>
-    <p>INF654 Prototype – PWA Reminder App | Visual Mockup v1.0</p>
+    <p>INF654 Prototype – PWA Reminder App | Firebase & IndexedDB Integration v2.0</p>
   </footer>
 
-  <script>
-    // Interactive functionality for visual prototype
-    function toggleButton(button) {
-      if (button.textContent === 'On') {
-        button.textContent = 'Off';
-        button.classList.add('off');
-        button.classList.remove('pulse');
-      } else {
-        button.textContent = 'On';
-        button.classList.remove('off');
-        button.classList.add('pulse');
-        setTimeout(() => button.classList.remove('pulse'), 2000);
-      }
-    }
-
-    function resetTimer(button) {
-      button.classList.add('pulse');
-      setTimeout(() => button.classList.remove('pulse'), 1000);
-      
-      // Visual feedback
-      const timerDisplay = button.parentElement.querySelector('.timer-display');
-      const originalText = timerDisplay.textContent;
-      timerDisplay.textContent = 'RESET!';
-      timerDisplay.style.background = '#e74c3c';
-      
-      setTimeout(() => {
-        timerDisplay.textContent = originalText;
-        timerDisplay.style.background = '#34495e';
-      }, 1500);
-    }
-
-    function showAddGameDialog() {
-      alert('🎮 Add New Game Feature\n\nIn the full version, users will be able to:\n\n✅ Add custom games\n✅ Create custom reminder categories\n✅ Set personalized timers\n✅ Import/export settings\n\nThis is a visual prototype - feature coming soon!');
-    }
-
-    // Add some visual flair on page load
-    document.addEventListener('DOMContentLoaded', function() {
-      // Animate cards on load
-      const gameCards = document.querySelectorAll('.game, .add-game-card');
-      gameCards.forEach((card, index) => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(50px)';
-        setTimeout(() => {
-          card.style.transition = 'all 0.6s ease';
-          card.style.opacity = '1';
-          card.style.transform = 'translateY(0)';
-        }, index * 200);
-      });
-
-      // Add tooltip functionality
-      const timerDisplays = document.querySelectorAll('.timer-display');
-      timerDisplays.forEach(display => {
-        display.classList.add('tooltip');
-        display.setAttribute('data-tooltip', 'Default timer duration');
-      });
-    });
-  </script>
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" style="display: none;">
+    <div class="loading-spinner"></div>
+    <p>Loading your reminders...</p>
+  </div>
 
   <!-- Service Worker Registration -->
   <script>
@@ -411,5 +319,184 @@
       console.warn('⚠️ Service Workers are not supported in this browser.');
     }
   </script>
+
+  <!-- Main App Script - Must be type="module" for ES6 imports -->
+  <script type="module" src="js/app.js"></script>
+
+  <!-- Inline UI Helper Scripts -->
+  <script>
+    // Add New Game Dialog
+    function showAddGameDialog() {
+      alert('🎮 Add New Game Feature\n\nIn the full version, users will be able to:\n\n✅ Add custom games\n✅ Create custom reminder categories\n✅ Set personalized timers\n✅ Import/export settings\n\nThis is a visual prototype - feature coming soon!');
+    }
+
+    // Connection Status Monitor
+    function updateConnectionStatus() {
+      const statusIcon = document.getElementById('status-icon');
+      const statusText = document.getElementById('status-text');
+      const connectionStatus = document.getElementById('connection-status');
+      
+      if (navigator.onLine) {
+        statusIcon.textContent = '🌐';
+        statusText.textContent = 'Online';
+        connectionStatus.classList.remove('offline');
+        connectionStatus.classList.add('online');
+      } else {
+        statusIcon.textContent = '📴';
+        statusText.textContent = 'Offline';
+        connectionStatus.classList.remove('online');
+        connectionStatus.classList.add('offline');
+      }
+    }
+
+    // Listen for online/offline events
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+    
+    // Initialize connection status
+    document.addEventListener('DOMContentLoaded', updateConnectionStatus);
+  </script>
+
+  <!-- Add CSS for new elements -->
+  <style>
+    .status-indicator {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #2c3e50;
+      padding: 10px 20px;
+      border-radius: 25px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      transition: all 0.3s ease;
+    }
+
+    .status-indicator.online {
+      background: #27ae60;
+    }
+
+    .status-indicator.offline {
+      background: #e74c3c;
+    }
+
+    #status-icon {
+      font-size: 20px;
+    }
+
+    #status-text {
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .sync-status-bar {
+      background: #3498db;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .timer-input {
+      width: 50px;
+      padding: 5px;
+      text-align: center;
+      border: 2px solid #34495e;
+      border-radius: 5px;
+      background: #2c3e50;
+      color: white;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .timer-input:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+
+    .timer-separator {
+      color: #ecf0f1;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    .btn-save {
+      background: #27ae60;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
+
+    .btn-save:hover {
+      background: #229954;
+      transform: scale(1.05);
+    }
+
+    .btn-save:active {
+      transform: scale(0.95);
+    }
+
+    #loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(26, 26, 46, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #34495e;
+      border-top: 5px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #loading-overlay p {
+      color: white;
+      margin-top: 20px;
+      font-size: 18px;
+    }
+
+    .coming-soon-text {
+      color: #95a5a6;
+      font-style: italic;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .reminder-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+  </style>
 </body>
 </html>
