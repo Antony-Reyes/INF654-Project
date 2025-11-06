@@ -1,5 +1,5 @@
 // Service Worker for Game Reminders PWA with Firebase & IndexedDB Support
-const CACHE_NAME = 'game-reminders-v3'; // Updated version for Firebase integration
+const CACHE_NAME = 'game-reminders-v4'; // UPDATED VERSION - Forces cache refresh
 const urlsToCache = [
   '/',
   '/index.html',
@@ -25,7 +25,7 @@ const urlsToCache = [
 
 // Install Event - Cache all essential resources
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing Service Worker...');
+  console.log('[Service Worker] Installing Service Worker v4...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -49,17 +49,19 @@ self.addEventListener('install', (event) => {
 
 // Activate Event - Clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activating Service Worker...');
+  console.log('[Service Worker] Activating Service Worker v4...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('[Service Worker] Deleting old cache:', cacheName);
+            console.log('[Service Worker] 🗑️ Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+      console.log('[Service Worker] ✅ Old caches cleared, v4 is now active');
     })
   );
   // Claim clients immediately
@@ -125,6 +127,7 @@ self.addEventListener('fetch', (event) => {
 // Listen for messages from the client
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[Service Worker] ⏩ Skip waiting requested');
     self.skipWaiting();
   }
   

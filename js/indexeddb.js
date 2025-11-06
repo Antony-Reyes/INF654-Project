@@ -58,7 +58,7 @@ const IndexedDB = {
         ...reminderData,
         id: reminderId,
         updatedAt: new Date().toISOString(),
-        synced: false // Mark as not synced to Firebase yet
+        synced: reminderData.synced !== undefined ? reminderData.synced : false
       };
 
       const request = objectStore.put(data);
@@ -128,7 +128,7 @@ const IndexedDB = {
     });
   },
 
-  // Get all unsynced reminders (for syncing with Firebase)
+  // Get all unsynced reminders using CURSOR method (most reliable)
   async getUnsyncedReminders() {
     return new Promise((resolve, reject) => {
       if (!db) {
@@ -136,20 +136,40 @@ const IndexedDB = {
         return;
       }
 
-      const transaction = db.transaction([STORE_NAME], 'readonly');
-      const objectStore = transaction.objectStore(STORE_NAME);
-      const index = objectStore.index('synced');
-      const request = index.getAll(false);
+      try {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const objectStore = transaction.objectStore(STORE_NAME);
+        const unsyncedReminders = [];
 
-      request.onsuccess = () => {
-        console.log(`[IndexedDB] ✅ Retrieved ${request.result.length} unsynced reminders`);
-        resolve(request.result);
-      };
+        // Use cursor to iterate through all records
+        const request = objectStore.openCursor();
 
-      request.onerror = () => {
-        console.error('[IndexedDB] ❌ Error getting unsynced reminders:', request.error);
-        reject(request.error);
-      };
+        request.onsuccess = (event) => {
+          const cursor = event.target.result;
+          
+          if (cursor) {
+            // Check if this record is unsynced
+            const reminder = cursor.value;
+            if (reminder.synced === false || reminder.synced === undefined) {
+              unsyncedReminders.push(reminder);
+            }
+            cursor.continue();
+          } else {
+            // No more records
+            console.log(`[IndexedDB] ✅ Retrieved ${unsyncedReminders.length} unsynced reminders (cursor method)`);
+            resolve(unsyncedReminders);
+          }
+        };
+
+        request.onerror = () => {
+          console.error('[IndexedDB] ❌ Error getting unsynced reminders:', request.error);
+          reject(request.error);
+        };
+
+      } catch (error) {
+        console.error('[IndexedDB] ❌ Exception in getUnsyncedReminders:', error);
+        reject(error);
+      }
     });
   },
 
@@ -169,6 +189,7 @@ const IndexedDB = {
         const data = getRequest.result;
         if (data) {
           data.synced = true;
+          data.syncedAt = new Date().toISOString();
           const updateRequest = objectStore.put(data);
 
           updateRequest.onsuccess = () => {
@@ -181,6 +202,7 @@ const IndexedDB = {
             reject(updateRequest.error);
           };
         } else {
+          console.warn(`[IndexedDB] ⚠️ Reminder not found for marking as synced: ${reminderId}`);
           resolve(false);
         }
       };
@@ -237,6 +259,29 @@ const IndexedDB = {
         console.error('[IndexedDB] ❌ Error clearing reminders:', request.error);
         reject(request.error);
       };
+    });
+  },
+
+  // Get sync statistics (useful for debugging)
+  async getSyncStats() {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const allReminders = await this.getAllReminders();
+        const unsyncedReminders = await this.getUnsyncedReminders();
+        
+        const stats = {
+          total: allReminders.length,
+          synced: allReminders.filter(r => r.synced === true).length,
+          unsynced: unsyncedReminders.length,
+          enabled: allReminders.filter(r => r.enabled === true).length
+        };
+
+        console.log('[IndexedDB] 📊 Sync Stats:', stats);
+        resolve(stats);
+      } catch (error) {
+        console.error('[IndexedDB] ❌ Error getting sync stats:', error);
+        reject(error);
+      }
     });
   }
 };
