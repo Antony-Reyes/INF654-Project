@@ -1,5 +1,5 @@
-// Main Application Controller
-import { FirebaseDB } from './firebase-config.js';
+// Main Application Controller with Authentication
+import { FirebaseDB, AuthManager } from './firebase-config.js';
 import IndexedDB from './indexeddb.js';
 import { SyncManager, StorageManager, isOnline } from './sync.js';
 import { ReminderManager } from './reminders.js';
@@ -8,32 +8,80 @@ import { ReminderManager } from './reminders.js';
 const App = {
   initialized: false,
   reminders: new Map(),
+  currentUser: null,
 
   // Initialize the application
   async init() {
     console.log('[App] 🚀 Initializing application...');
     
     try {
-      // Show loading overlay
-      this.showLoading(true);
-
       // Step 1: Initialize IndexedDB
       console.log('[App] 📦 Initializing IndexedDB...');
       await IndexedDB.init();
 
-      // Step 2: Initialize Sync Manager
+      // Step 2: Setup authentication listener
+      console.log('[App] 🔐 Setting up authentication...');
+      this.setupAuthListener();
+
+      // Step 3: Setup UI event listeners for auth forms
+      this.setupAuthFormListeners();
+
+      console.log('[App] ✅ Application initialization started (waiting for auth)');
+
+    } catch (error) {
+      console.error('[App] ❌ Initialization failed:', error);
+      this.showNotification('❌ Failed to initialize app. Please refresh the page.');
+    }
+  },
+
+  // Setup authentication state listener
+  setupAuthListener() {
+    AuthManager.onAuthStateChange(async (user) => {
+      if (user) {
+        // User is signed in
+        this.currentUser = user;
+        console.log('[App] ✅ User authenticated:', user.email);
+        
+        // Hide auth overlay, show main app
+        this.hideAuthOverlay();
+        this.showUserInfo(user);
+        
+        // Initialize app components
+        await this.initializeAppComponents();
+        
+      } else {
+        // User is signed out
+        this.currentUser = null;
+        console.log('[App] 🚪 User signed out');
+        
+        // Show auth overlay, hide main app
+        this.showAuthOverlay();
+        this.hideUserInfo();
+        
+        // Clear app data
+        this.clearAppData();
+      }
+    });
+  },
+
+  // Initialize app components after authentication
+  async initializeAppComponents() {
+    try {
+      this.showLoading(true);
+
+      // Initialize Sync Manager
       console.log('[App] 🔄 Initializing Sync Manager...');
       SyncManager.init();
 
-      // Step 3: Load all reminders from storage
+      // Load all reminders from storage
       console.log('[App] 📥 Loading reminders from storage...');
       await this.loadReminders();
 
-      // Step 4: Initialize UI event listeners
+      // Initialize UI event listeners
       console.log('[App] 🎨 Setting up UI event listeners...');
       this.initializeEventListeners();
 
-      // Step 5: Start reminder timers for active reminders
+      // Start reminder timers for active reminders
       console.log('[App] ⏰ Starting active reminder timers...');
       this.startActiveReminders();
 
@@ -41,17 +89,249 @@ const App = {
       this.initialized = true;
       console.log('[App] ✅ Application initialized successfully!');
 
-      // Hide loading overlay
       this.showLoading(false);
-
-      // Show welcome message
-      this.showNotification('✅ App ready! Your reminders are loaded.');
+      this.showNotification(`✅ Welcome back, ${this.currentUser.email}!`);
 
     } catch (error) {
-      console.error('[App] ❌ Initialization failed:', error);
+      console.error('[App] ❌ Component initialization failed:', error);
       this.showLoading(false);
-      this.showNotification('❌ Failed to initialize app. Please refresh the page.');
+      this.showNotification('❌ Failed to load your data. Please try again.');
     }
+  },
+
+  // Setup authentication form listeners
+  setupAuthFormListeners() {
+    // Sign In Button
+    const signinButton = document.getElementById('signin-button');
+    if (signinButton) {
+      signinButton.addEventListener('click', () => this.handleSignIn());
+    }
+
+    // Sign Up Button
+    const signupButton = document.getElementById('signup-button');
+    if (signupButton) {
+      signupButton.addEventListener('click', () => this.handleSignUp());
+    }
+
+    // Logout Button
+    const logoutButton = document.getElementById('logout-button');
+    if (logoutButton) {
+      logoutButton.addEventListener('click', () => this.handleLogout());
+    }
+
+    // Form Toggle Links
+    const showSignup = document.getElementById('show-signup');
+    const showSignin = document.getElementById('show-signin');
+    
+    if (showSignup) {
+      showSignup.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.toggleAuthForms('signup');
+      });
+    }
+    
+    if (showSignin) {
+      showSignin.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.toggleAuthForms('signin');
+      });
+    }
+
+    // Enter key listeners for forms
+    const signinEmail = document.getElementById('signin-email');
+    const signinPassword = document.getElementById('signin-password');
+    const signupEmail = document.getElementById('signup-email');
+    const signupPassword = document.getElementById('signup-password');
+    const signupConfirm = document.getElementById('signup-confirm');
+
+    [signinEmail, signinPassword].forEach(input => {
+      if (input) {
+        input.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') this.handleSignIn();
+        });
+      }
+    });
+
+    [signupEmail, signupPassword, signupConfirm].forEach(input => {
+      if (input) {
+        input.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') this.handleSignUp();
+        });
+      }
+    });
+  },
+
+  // Handle sign in
+  async handleSignIn() {
+    const email = document.getElementById('signin-email').value.trim();
+    const password = document.getElementById('signin-password').value;
+
+    if (!email || !password) {
+      this.showAuthError('Please enter both email and password');
+      return;
+    }
+
+    this.showAuthLoading(true);
+    this.hideAuthError();
+
+    const result = await AuthManager.signIn(email, password);
+
+    if (result.success) {
+      console.log('[App] ✅ Sign in successful');
+      // Auth state listener will handle the rest
+    } else {
+      this.showAuthLoading(false);
+      this.showAuthError(this.getErrorMessage(result.code));
+    }
+  },
+
+  // Handle sign up
+  async handleSignUp() {
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    const confirm = document.getElementById('signup-confirm').value;
+
+    if (!email || !password || !confirm) {
+      this.showAuthError('Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 6) {
+      this.showAuthError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (password !== confirm) {
+      this.showAuthError('Passwords do not match');
+      return;
+    }
+
+    this.showAuthLoading(true);
+    this.hideAuthError();
+
+    const result = await AuthManager.signUp(email, password);
+
+    if (result.success) {
+      console.log('[App] ✅ Sign up successful');
+      // Auth state listener will handle the rest
+    } else {
+      this.showAuthLoading(false);
+      this.showAuthError(this.getErrorMessage(result.code));
+    }
+  },
+
+  // Handle logout
+  async handleLogout() {
+    if (confirm('Are you sure you want to sign out?')) {
+      console.log('[App] 🚪 User requested logout');
+      this.showLoading(true);
+      
+      const result = await AuthManager.signOut();
+      
+      if (result.success) {
+        console.log('[App] ✅ Logout successful');
+        // Auth state listener will handle the rest
+      } else {
+        this.showLoading(false);
+        this.showNotification('❌ Failed to sign out. Please try again.');
+      }
+    }
+  },
+
+  // Toggle between sign in and sign up forms
+  toggleAuthForms(formType) {
+    const signinForm = document.getElementById('signin-form');
+    const signupForm = document.getElementById('signup-form');
+    
+    if (formType === 'signup') {
+      signinForm.classList.remove('active');
+      signupForm.classList.add('active');
+    } else {
+      signupForm.classList.remove('active');
+      signinForm.classList.add('active');
+    }
+    
+    this.hideAuthError();
+  },
+
+  // Show/hide authentication overlay
+  showAuthOverlay() {
+    const overlay = document.getElementById('auth-overlay');
+    if (overlay) {
+      overlay.style.display = 'flex';
+    }
+  },
+
+  hideAuthOverlay() {
+    const overlay = document.getElementById('auth-overlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+    }
+  },
+
+  // Show/hide user info
+  showUserInfo(user) {
+    const userInfo = document.getElementById('user-info');
+    const userEmail = document.getElementById('user-email');
+    
+    if (userInfo && userEmail) {
+      userEmail.textContent = user.email;
+      userInfo.style.display = 'flex';
+    }
+  },
+
+  hideUserInfo() {
+    const userInfo = document.getElementById('user-info');
+    if (userInfo) {
+      userInfo.style.display = 'none';
+    }
+  },
+
+  // Show/hide auth loading
+  showAuthLoading(show) {
+    const loading = document.getElementById('auth-loading');
+    if (loading) {
+      loading.style.display = show ? 'flex' : 'none';
+    }
+  },
+
+  // Show/hide auth error
+  showAuthError(message) {
+    const error = document.getElementById('auth-error');
+    if (error) {
+      error.textContent = message;
+      error.style.display = 'block';
+    }
+  },
+
+  hideAuthError() {
+    const error = document.getElementById('auth-error');
+    if (error) {
+      error.style.display = 'none';
+    }
+  },
+
+  // Get user-friendly error message
+  getErrorMessage(code) {
+    const errorMessages = {
+      'auth/email-already-in-use': 'This email is already registered',
+      'auth/invalid-email': 'Invalid email address',
+      'auth/user-not-found': 'No account found with this email',
+      'auth/wrong-password': 'Incorrect password',
+      'auth/weak-password': 'Password should be at least 6 characters',
+      'auth/network-request-failed': 'Network error. Please check your connection',
+      'auth/too-many-requests': 'Too many attempts. Please try again later'
+    };
+
+    return errorMessages[code] || 'An error occurred. Please try again';
+  },
+
+  // Clear app data on logout
+  clearAppData() {
+    this.reminders.clear();
+    ReminderManager.stopAllTimers();
+    this.initialized = false;
+    console.log('[App] 🧹 App data cleared');
   },
 
   // Load all reminders from storage

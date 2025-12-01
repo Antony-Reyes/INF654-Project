@@ -1,5 +1,5 @@
-// Data Synchronization between IndexedDB and Firebase
-import { FirebaseDB } from './firebase-config.js';
+// Data Synchronization between IndexedDB and Firebase with User Authentication
+import { FirebaseDB, AuthManager } from './firebase-config.js';
 import IndexedDB from './indexeddb.js';
 
 // Check if the app is online
@@ -7,7 +7,13 @@ function isOnline() {
   return navigator.onLine;
 }
 
-// Sync Manager with Automatic Periodic Sync
+// Get current user ID
+function getCurrentUserId() {
+  const user = AuthManager.getCurrentUser();
+  return user ? user.uid : null;
+}
+
+// Sync Manager with Automatic Periodic Sync (User-Specific)
 const SyncManager = {
   isSyncing: false,
   syncInProgress: false,
@@ -53,7 +59,7 @@ const SyncManager = {
 
     // Listen for visibility change (user returns to tab)
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && isOnline() && !this.syncInProgress) {
+      if (!document.hidden && isOnline() && !this.syncInProgress && getCurrentUserId()) {
         console.log('[Sync] 👁️ Tab visible and online - checking for sync');
         // Small delay to avoid multiple rapid syncs
         setTimeout(() => {
@@ -90,8 +96,10 @@ const SyncManager = {
       
       // Initial sync after a longer delay to ensure everything is loaded
       setTimeout(() => {
-        console.log('[Sync] 🚀 Running initial sync check...');
-        this.syncAll();
+        if (getCurrentUserId()) {
+          console.log('[Sync] 🚀 Running initial sync check...');
+          this.syncAll();
+        }
       }, 3000);
       
       // Start periodic sync
@@ -112,19 +120,22 @@ const SyncManager = {
       this.syncInterval = null;
     }
 
-    // Only start if online
-    if (!isOnline()) {
-      console.log('[Sync] 📴 Cannot start periodic sync - offline');
+    // Only start if online and user is authenticated
+    if (!isOnline() || !getCurrentUserId()) {
+      console.log('[Sync] 📴 Cannot start periodic sync - offline or not authenticated');
       return;
     }
 
     // Set up periodic sync
     this.syncInterval = setInterval(() => {
-      if (isOnline() && !this.syncInProgress) {
+      if (isOnline() && !this.syncInProgress && getCurrentUserId()) {
         console.log('[Sync] ⏰ Periodic sync triggered');
         this.syncAll();
       } else if (!isOnline()) {
         console.log('[Sync] 📴 Skipping periodic sync - offline');
+        this.stopPeriodicSync();
+      } else if (!getCurrentUserId()) {
+        console.log('[Sync] 🔐 Skipping periodic sync - not authenticated');
         this.stopPeriodicSync();
       }
     }, this.syncIntervalMs);
@@ -158,7 +169,7 @@ const SyncManager = {
     }
   },
 
-  // Sync all unsynced data from IndexedDB to Firebase (AUTOMATIC)
+  // Sync all unsynced data from IndexedDB to Firebase (AUTOMATIC - User-Specific)
   async syncAll() {
     if (this.syncInProgress) {
       console.log('[Sync] ⏳ Sync already in progress, skipping...');
@@ -170,12 +181,18 @@ const SyncManager = {
       return { success: false, reason: 'offline' };
     }
 
+    const userId = getCurrentUserId();
+    if (!userId) {
+      console.log('[Sync] 🔐 Not authenticated - cannot sync');
+      return { success: false, reason: 'not_authenticated' };
+    }
+
     this.syncInProgress = true;
-    console.log('[Sync] 🔄 Starting automatic sync...');
+    console.log('[Sync] 🔄 Starting automatic sync for user', userId);
 
     try {
-      // Get all unsynced reminders from IndexedDB
-      const unsyncedReminders = await IndexedDB.getUnsyncedReminders();
+      // Get all unsynced reminders from IndexedDB for current user
+      const unsyncedReminders = await IndexedDB.getUnsyncedReminders(userId);
       
       if (unsyncedReminders.length === 0) {
         console.log('[Sync] ✅ No unsynced data found - all up to date!');
@@ -206,7 +223,7 @@ const SyncManager = {
           );
 
           await Promise.race([syncPromise, timeoutPromise]);
-          await IndexedDB.markAsSynced(reminder.id);
+          await IndexedDB.markAsSynced(reminder.id, userId);
           successCount++;
           console.log(`[Sync] ✅ Synced: ${reminder.name || reminder.id}`);
         } catch (error) {
@@ -229,7 +246,7 @@ const SyncManager = {
         
         // Retry after delay
         setTimeout(() => {
-          if (isOnline() && this.retryCount <= this.maxRetries) {
+          if (isOnline() && this.retryCount <= this.maxRetries && getCurrentUserId()) {
             console.log(`[Sync] 🔄 Retry attempt ${this.retryCount}/${this.maxRetries}`);
             this.syncAll();
           }
@@ -254,7 +271,7 @@ const SyncManager = {
       if (this.retryCount < this.maxRetries) {
         this.retryCount++;
         setTimeout(() => {
-          if (isOnline()) {
+          if (isOnline() && getCurrentUserId()) {
             this.syncAll();
           }
         }, 5000 * this.retryCount);
@@ -280,7 +297,13 @@ const SyncManager = {
       return [];
     }
 
-    console.log('[Sync] 📥 Pulling data from Firebase...');
+    const userId = getCurrentUserId();
+    if (!userId) {
+      console.log('[Sync] 🔐 Not authenticated - cannot pull from Firebase');
+      return [];
+    }
+
+    console.log('[Sync] 📥 Pulling data from Firebase for user', userId);
 
     try {
       const firebaseReminders = await FirebaseDB.getAllReminders();
@@ -292,7 +315,7 @@ const SyncManager = {
         await IndexedDB.setReminder(reminder.id, {
           ...reminder,
           synced: true // Mark as synced since it came from Firebase
-        });
+        }, userId);
       }
 
       console.log('[Sync] ✅ Pull from Firebase complete');
@@ -352,6 +375,7 @@ const SyncManager = {
   getStatus() {
     return {
       online: isOnline(),
+      authenticated: !!getCurrentUserId(),
       syncing: this.syncInProgress,
       periodicSyncActive: this.syncInterval !== null,
       retryCount: this.retryCount,
@@ -362,7 +386,10 @@ const SyncManager = {
   // Check for unsynced data count (useful for UI indicators)
   async getUnsyncedCount() {
     try {
-      const unsynced = await IndexedDB.getUnsyncedReminders();
+      const userId = getCurrentUserId();
+      if (!userId) return 0;
+      
+      const unsynced = await IndexedDB.getUnsyncedReminders(userId);
       return unsynced.length;
     } catch (error) {
       console.error('[Sync] ❌ Error getting unsynced count:', error);
@@ -371,28 +398,34 @@ const SyncManager = {
   }
 };
 
-// Storage Manager - decides whether to use Firebase or IndexedDB
+// Storage Manager - decides whether to use Firebase or IndexedDB (User-Specific)
 const StorageManager = {
   // Save a reminder (automatically chooses Firebase or IndexedDB)
   async saveReminder(reminderId, reminderData) {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
       // Ensure the data has proper structure
       const dataToSave = {
         ...reminderData,
         id: reminderId,
+        userId: userId, // NEW: Associate with user
         lastModified: Date.now(),
         synced: false // Initially mark as unsynced
       };
 
       // Always save to IndexedDB first (for offline support)
-      await IndexedDB.setReminder(reminderId, dataToSave);
+      await IndexedDB.setReminder(reminderId, dataToSave, userId);
       console.log(`[Storage] ✅ Saved to IndexedDB: ${reminderId}`);
 
       // If online, also save to Firebase immediately
       if (isOnline()) {
         try {
           await FirebaseDB.setReminder(reminderId, dataToSave);
-          await IndexedDB.markAsSynced(reminderId);
+          await IndexedDB.markAsSynced(reminderId, userId);
           console.log(`[Storage] ✅ Saved to Firebase: ${reminderId}`);
           SyncManager.showSyncNotification('✅ Changes saved and synced!');
         } catch (error) {
@@ -420,8 +453,13 @@ const StorageManager = {
   // Get a reminder (tries IndexedDB first, then Firebase)
   async getReminder(reminderId) {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
       // Try IndexedDB first (fastest)
-      const localReminder = await IndexedDB.getReminder(reminderId);
+      const localReminder = await IndexedDB.getReminder(reminderId, userId);
       if (localReminder) {
         console.log(`[Storage] ✅ Retrieved from IndexedDB: ${reminderId}`);
         return localReminder;
@@ -432,12 +470,12 @@ const StorageManager = {
         console.log(`[Storage] 🌐 Not in IndexedDB, trying Firebase: ${reminderId}`);
         const firebaseReminder = await FirebaseDB.getReminder(reminderId);
         
-        if (firebaseReminder) {
+        if (firebaseReminder && firebaseReminder.userId === userId) {
           // Save to IndexedDB for offline access
           await IndexedDB.setReminder(reminderId, {
             ...firebaseReminder,
             synced: true
-          });
+          }, userId);
           return firebaseReminder;
         }
       }
@@ -451,12 +489,17 @@ const StorageManager = {
     }
   },
 
-  // Get all reminders
+  // Get all reminders for current user
   async getAllReminders() {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
       // Always try IndexedDB first
-      const localReminders = await IndexedDB.getAllReminders();
-      console.log(`[Storage] ✅ Retrieved ${localReminders.length} reminders from IndexedDB`);
+      const localReminders = await IndexedDB.getAllReminders(userId);
+      console.log(`[Storage] ✅ Retrieved ${localReminders.length} reminders from IndexedDB for user ${userId}`);
 
       // If online and no local data, try pulling from Firebase
       if (isOnline() && localReminders.length === 0) {
@@ -476,8 +519,13 @@ const StorageManager = {
   // Delete a reminder
   async deleteReminder(reminderId) {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
       // Delete from IndexedDB
-      await IndexedDB.deleteReminder(reminderId);
+      await IndexedDB.deleteReminder(reminderId, userId);
       console.log(`[Storage] ✅ Deleted from IndexedDB: ${reminderId}`);
 
       // If online, also delete from Firebase

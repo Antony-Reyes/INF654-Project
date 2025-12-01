@@ -1,4 +1,4 @@
-// Firebase Configuration and Initialization (CDN Version)
+// Firebase Configuration and Initialization with Authentication (CDN Version)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
 import { 
   getFirestore, 
@@ -8,8 +8,19 @@ import {
   getDoc, 
   getDocs, 
   deleteDoc,
-  enableIndexedDbPersistence
+  query,
+  where,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut,
+  onAuthStateChanged
+} from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -25,55 +36,129 @@ const firebaseConfig = {
 console.log('[Firebase] 🚀 Initializing Firebase...');
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore
-const db = getFirestore(app);
+// Initialize Firebase Authentication
+const auth = getAuth(app);
+console.log('[Firebase] 🔐 Firebase Authentication initialized');
 
-// Enable offline persistence (works with CDN version)
-enableIndexedDbPersistence(db)
-  .then(() => {
-    console.log('[Firebase] ✅ Firestore initialized with offline persistence');
-  })
-  .catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn('[Firebase] ⚠️ Multiple tabs open, persistence only enabled in one tab');
-    } else if (err.code === 'unimplemented') {
-      console.warn('[Firebase] ⚠️ Browser does not support offline persistence');
-    } else {
-      console.error('[Firebase] ❌ Error enabling persistence:', err);
-    }
+// Initialize Firestore with modern persistence settings
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
   });
-
-// Generate a unique device ID for anonymous user identification
-function getDeviceId() {
-  let deviceId = localStorage.getItem('deviceId');
-  if (!deviceId) {
-    deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('deviceId', deviceId);
-    console.log('[Firebase] 📱 New Device ID created:', deviceId);
-  } else {
-    console.log('[Firebase] 📱 Existing Device ID found:', deviceId);
-  }
-  return deviceId;
+  console.log('[Firebase] ✅ Firestore initialized with modern persistent cache');
+} catch (error) {
+  // Fallback if modern cache initialization fails
+  console.warn('[Firebase] ⚠️ Modern cache failed, using default Firestore:', error);
+  db = getFirestore(app);
 }
 
-const DEVICE_ID = getDeviceId();
+// Current user ID (will be set after authentication)
+let currentUserId = null;
 
-// Firebase CRUD Operations
+// Authentication Manager
+const AuthManager = {
+  // Sign up new user
+  async signUp(email, password) {
+    try {
+      console.log('[Auth] 📝 Creating new user account...');
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      currentUserId = user.uid;
+      console.log('[Auth] ✅ User created successfully:', user.email);
+      console.log('[Auth] 👤 User UID:', user.uid);
+      return { success: true, user };
+    } catch (error) {
+      console.error('[Auth] ❌ Sign up failed:', error);
+      console.error('[Auth] Error code:', error.code);
+      console.error('[Auth] Error message:', error.message);
+      return { success: false, error: error.message, code: error.code };
+    }
+  },
+
+  // Sign in existing user
+  async signIn(email, password) {
+    try {
+      console.log('[Auth] 🔑 Signing in user...');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      currentUserId = user.uid;
+      console.log('[Auth] ✅ User signed in successfully:', user.email);
+      console.log('[Auth] 👤 User UID:', user.uid);
+      return { success: true, user };
+    } catch (error) {
+      console.error('[Auth] ❌ Sign in failed:', error);
+      console.error('[Auth] Error code:', error.code);
+      console.error('[Auth] Error message:', error.message);
+      return { success: false, error: error.message, code: error.code };
+    }
+  },
+
+  // Sign out current user
+  async signOut() {
+    try {
+      console.log('[Auth] 🚪 Signing out user...');
+      await signOut(auth);
+      currentUserId = null;
+      console.log('[Auth] ✅ User signed out successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('[Auth] ❌ Sign out failed:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get current user
+  getCurrentUser() {
+    return auth.currentUser;
+  },
+
+  // Get current user ID
+  getCurrentUserId() {
+    return currentUserId;
+  },
+
+  // Listen to auth state changes
+  onAuthStateChange(callback) {
+    return onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUserId = user.uid;
+        console.log('[Auth] 👤 User authenticated:', user.email);
+        console.log('[Auth] 👤 User UID:', user.uid);
+      } else {
+        currentUserId = null;
+        console.log('[Auth] 👤 No user authenticated');
+      }
+      callback(user);
+    });
+  }
+};
+
+// Firebase CRUD Operations (User-specific)
 const FirebaseDB = {
-  // Create or Update a reminder in Firebase
+  // Create or Update a reminder in Firebase (user-specific)
   async setReminder(reminderId, reminderData) {
     try {
-      const reminderRef = doc(db, 'reminders', `${DEVICE_ID}_${reminderId}`);
+      if (!currentUserId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Use user-specific document ID format: userId_reminderId
+      const docId = `${currentUserId}_${reminderId}`;
+      const reminderRef = doc(db, 'reminders', docId);
+      
       const dataToSave = {
         ...reminderData,
-        deviceId: DEVICE_ID,
+        userId: currentUserId,
         id: reminderId,
         updatedAt: new Date().toISOString(),
         synced: true
       };
       
       await setDoc(reminderRef, dataToSave);
-      console.log(`[Firebase] ✅ Reminder saved: ${reminderId}`);
+      console.log(`[Firebase] ✅ Reminder saved: ${reminderId} for user ${currentUserId}`);
       return dataToSave;
     } catch (error) {
       console.error('[Firebase] ❌ Error saving reminder:', error);
@@ -81,10 +166,15 @@ const FirebaseDB = {
     }
   },
 
-  // Read a specific reminder from Firebase
+  // Read a specific reminder from Firebase (user-specific)
   async getReminder(reminderId) {
     try {
-      const reminderRef = doc(db, 'reminders', `${DEVICE_ID}_${reminderId}`);
+      if (!currentUserId) {
+        throw new Error('User not authenticated');
+      }
+
+      const docId = `${currentUserId}_${reminderId}`;
+      const reminderRef = doc(db, 'reminders', docId);
       const reminderSnap = await getDoc(reminderRef);
       
       if (reminderSnap.exists()) {
@@ -101,22 +191,23 @@ const FirebaseDB = {
     }
   },
 
-  // Read all reminders for this device from Firebase
+  // Read all reminders for current user from Firebase
   async getAllReminders() {
     try {
+      if (!currentUserId) {
+        throw new Error('User not authenticated');
+      }
+
       const remindersRef = collection(db, 'reminders');
-      const querySnapshot = await getDocs(remindersRef);
+      const q = query(remindersRef, where('userId', '==', currentUserId));
+      const querySnapshot = await getDocs(q);
       
       const reminders = [];
       querySnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        // Only return reminders for this device
-        if (data.deviceId === DEVICE_ID) {
-          reminders.push(data);
-        }
+        reminders.push(docSnap.data());
       });
       
-      console.log(`[Firebase] ✅ Retrieved ${reminders.length} reminders for this device`);
+      console.log(`[Firebase] ✅ Retrieved ${reminders.length} reminders for user ${currentUserId}`);
       return reminders;
     } catch (error) {
       console.error('[Firebase] ❌ Error getting all reminders:', error);
@@ -124,10 +215,15 @@ const FirebaseDB = {
     }
   },
 
-  // Delete a reminder from Firebase
+  // Delete a reminder from Firebase (user-specific)
   async deleteReminder(reminderId) {
     try {
-      const reminderRef = doc(db, 'reminders', `${DEVICE_ID}_${reminderId}`);
+      if (!currentUserId) {
+        throw new Error('User not authenticated');
+      }
+
+      const docId = `${currentUserId}_${reminderId}`;
+      const reminderRef = doc(db, 'reminders', docId);
       await deleteDoc(reminderRef);
       console.log(`[Firebase] ✅ Reminder deleted: ${reminderId}`);
       return true;
@@ -137,18 +233,24 @@ const FirebaseDB = {
     }
   },
 
-  // Get the device ID
-  getDeviceId() {
-    return DEVICE_ID;
+  // Get the current user ID
+  getUserId() {
+    return currentUserId;
   },
 
   // Test connection to Firebase
   async testConnection() {
     try {
+      if (!currentUserId) {
+        console.log('[Firebase] ⚠️ Cannot test connection - user not authenticated');
+        return false;
+      }
+
       console.log('[Firebase] 🧪 Testing connection...');
-      const testRef = doc(db, 'reminders', `${DEVICE_ID}_test`);
+      const testRef = doc(db, 'reminders', `${currentUserId}_test`);
       await setDoc(testRef, {
         test: true,
+        userId: currentUserId,
         timestamp: new Date().toISOString()
       });
       await deleteDoc(testRef);
@@ -163,6 +265,6 @@ const FirebaseDB = {
 
 // Log successful initialization
 console.log('[Firebase] ✅ Firebase configuration loaded');
-console.log('[Firebase] 📱 Device ID:', DEVICE_ID);
+console.log('[Firebase] 🔐 Authentication ready');
 
-export { FirebaseDB, db, DEVICE_ID };
+export { FirebaseDB, AuthManager, db, auth, currentUserId };

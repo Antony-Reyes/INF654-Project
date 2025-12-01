@@ -1,6 +1,6 @@
-// IndexedDB Configuration and Operations
+// IndexedDB Configuration and Operations with User-Specific Data
 const DB_NAME = 'GameRemindersDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented for schema update
 const STORE_NAME = 'reminders';
 
 let db = null;
@@ -27,27 +27,37 @@ const IndexedDB = {
         db = event.target.result;
         console.log('[IndexedDB] 🔄 Database upgrade needed');
 
-        // Create object store if it doesn't exist
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-          
-          // Create indexes for efficient querying
-          objectStore.createIndex('gameId', 'gameId', { unique: false });
-          objectStore.createIndex('subsectionId', 'subsectionId', { unique: false });
-          objectStore.createIndex('synced', 'synced', { unique: false });
-          objectStore.createIndex('enabled', 'enabled', { unique: false });
-          
-          console.log('[IndexedDB] ✅ Object store created');
+        // Delete old object store if it exists (for clean migration)
+        if (db.objectStoreNames.contains(STORE_NAME)) {
+          db.deleteObjectStore(STORE_NAME);
+          console.log('[IndexedDB] 🗑️ Old object store deleted for schema update');
         }
+
+        // Create object store with updated schema
+        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        
+        // Create indexes for efficient querying
+        objectStore.createIndex('gameId', 'gameId', { unique: false });
+        objectStore.createIndex('subsectionId', 'subsectionId', { unique: false });
+        objectStore.createIndex('synced', 'synced', { unique: false });
+        objectStore.createIndex('enabled', 'enabled', { unique: false });
+        objectStore.createIndex('userId', 'userId', { unique: false }); // NEW: User-specific index
+        
+        console.log('[IndexedDB] ✅ Object store created with user-specific schema');
       };
     });
   },
 
-  // Create or Update a reminder in IndexedDB
-  async setReminder(reminderId, reminderData) {
+  // Create or Update a reminder in IndexedDB (with userId)
+  async setReminder(reminderId, reminderData, userId) {
     return new Promise((resolve, reject) => {
       if (!db) {
         reject(new Error('Database not initialized'));
+        return;
+      }
+
+      if (!userId) {
+        reject(new Error('User ID is required'));
         return;
       }
 
@@ -57,6 +67,7 @@ const IndexedDB = {
       const data = {
         ...reminderData,
         id: reminderId,
+        userId: userId, // NEW: Associate with user
         updatedAt: new Date().toISOString(),
         synced: reminderData.synced !== undefined ? reminderData.synced : false
       };
@@ -64,7 +75,7 @@ const IndexedDB = {
       const request = objectStore.put(data);
 
       request.onsuccess = () => {
-        console.log(`[IndexedDB] ✅ Reminder saved: ${reminderId}`);
+        console.log(`[IndexedDB] ✅ Reminder saved: ${reminderId} for user ${userId}`);
         resolve(data);
       };
 
@@ -75,11 +86,16 @@ const IndexedDB = {
     });
   },
 
-  // Read a specific reminder from IndexedDB
-  async getReminder(reminderId) {
+  // Read a specific reminder from IndexedDB (user-specific)
+  async getReminder(reminderId, userId) {
     return new Promise((resolve, reject) => {
       if (!db) {
         reject(new Error('Database not initialized'));
+        return;
+      }
+
+      if (!userId) {
+        reject(new Error('User ID is required'));
         return;
       }
 
@@ -88,9 +104,15 @@ const IndexedDB = {
       const request = objectStore.get(reminderId);
 
       request.onsuccess = () => {
-        if (request.result) {
+        const data = request.result;
+        
+        // Verify this reminder belongs to the current user
+        if (data && data.userId === userId) {
           console.log(`[IndexedDB] ✅ Reminder retrieved: ${reminderId}`);
-          resolve(request.result);
+          resolve(data);
+        } else if (data) {
+          console.log(`[IndexedDB] ⚠️ Reminder ${reminderId} belongs to different user`);
+          resolve(null);
         } else {
           console.log(`[IndexedDB] ℹ️ No reminder found: ${reminderId}`);
           resolve(null);
@@ -104,21 +126,28 @@ const IndexedDB = {
     });
   },
 
-  // Read all reminders from IndexedDB
-  async getAllReminders() {
+  // Read all reminders from IndexedDB for specific user
+  async getAllReminders(userId) {
     return new Promise((resolve, reject) => {
       if (!db) {
         reject(new Error('Database not initialized'));
         return;
       }
 
+      if (!userId) {
+        reject(new Error('User ID is required'));
+        return;
+      }
+
       const transaction = db.transaction([STORE_NAME], 'readonly');
       const objectStore = transaction.objectStore(STORE_NAME);
-      const request = objectStore.getAll();
+      const userIndex = objectStore.index('userId');
+      const request = userIndex.getAll(userId);
 
       request.onsuccess = () => {
-        console.log(`[IndexedDB] ✅ Retrieved ${request.result.length} reminders`);
-        resolve(request.result);
+        const userReminders = request.result;
+        console.log(`[IndexedDB] ✅ Retrieved ${userReminders.length} reminders for user ${userId}`);
+        resolve(userReminders);
       };
 
       request.onerror = () => {
@@ -128,11 +157,16 @@ const IndexedDB = {
     });
   },
 
-  // Get all unsynced reminders using CURSOR method (most reliable)
-  async getUnsyncedReminders() {
+  // Get all unsynced reminders for specific user (using CURSOR method)
+  async getUnsyncedReminders(userId) {
     return new Promise((resolve, reject) => {
       if (!db) {
         reject(new Error('Database not initialized'));
+        return;
+      }
+
+      if (!userId) {
+        reject(new Error('User ID is required'));
         return;
       }
 
@@ -148,15 +182,15 @@ const IndexedDB = {
           const cursor = event.target.result;
           
           if (cursor) {
-            // Check if this record is unsynced
             const reminder = cursor.value;
-            if (reminder.synced === false || reminder.synced === undefined) {
+            // Check if this record belongs to current user AND is unsynced
+            if (reminder.userId === userId && (reminder.synced === false || reminder.synced === undefined)) {
               unsyncedReminders.push(reminder);
             }
             cursor.continue();
           } else {
             // No more records
-            console.log(`[IndexedDB] ✅ Retrieved ${unsyncedReminders.length} unsynced reminders (cursor method)`);
+            console.log(`[IndexedDB] ✅ Retrieved ${unsyncedReminders.length} unsynced reminders for user ${userId}`);
             resolve(unsyncedReminders);
           }
         };
@@ -173,11 +207,16 @@ const IndexedDB = {
     });
   },
 
-  // Mark a reminder as synced
-  async markAsSynced(reminderId) {
+  // Mark a reminder as synced (user-specific)
+  async markAsSynced(reminderId, userId) {
     return new Promise((resolve, reject) => {
       if (!db) {
         reject(new Error('Database not initialized'));
+        return;
+      }
+
+      if (!userId) {
+        reject(new Error('User ID is required'));
         return;
       }
 
@@ -187,7 +226,9 @@ const IndexedDB = {
 
       getRequest.onsuccess = () => {
         const data = getRequest.result;
-        if (data) {
+        
+        // Verify this reminder belongs to the current user
+        if (data && data.userId === userId) {
           data.synced = true;
           data.syncedAt = new Date().toISOString();
           const updateRequest = objectStore.put(data);
@@ -201,8 +242,11 @@ const IndexedDB = {
             console.error('[IndexedDB] ❌ Error marking as synced:', updateRequest.error);
             reject(updateRequest.error);
           };
+        } else if (data) {
+          console.warn(`[IndexedDB] ⚠️ Reminder ${reminderId} belongs to different user`);
+          resolve(false);
         } else {
-          console.warn(`[IndexedDB] ⚠️ Reminder not found for marking as synced: ${reminderId}`);
+          console.warn(`[IndexedDB] ⚠️ Reminder not found: ${reminderId}`);
           resolve(false);
         }
       };
@@ -214,31 +258,99 @@ const IndexedDB = {
     });
   },
 
-  // Delete a reminder from IndexedDB
-  async deleteReminder(reminderId) {
+  // Delete a reminder from IndexedDB (user-specific)
+  async deleteReminder(reminderId, userId) {
     return new Promise((resolve, reject) => {
       if (!db) {
         reject(new Error('Database not initialized'));
         return;
       }
 
+      if (!userId) {
+        reject(new Error('User ID is required'));
+        return;
+      }
+
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const objectStore = transaction.objectStore(STORE_NAME);
-      const request = objectStore.delete(reminderId);
+      
+      // First verify the reminder belongs to this user
+      const getRequest = objectStore.get(reminderId);
 
-      request.onsuccess = () => {
-        console.log(`[IndexedDB] ✅ Reminder deleted: ${reminderId}`);
-        resolve(true);
+      getRequest.onsuccess = () => {
+        const data = getRequest.result;
+        
+        if (data && data.userId === userId) {
+          const deleteRequest = objectStore.delete(reminderId);
+
+          deleteRequest.onsuccess = () => {
+            console.log(`[IndexedDB] ✅ Reminder deleted: ${reminderId}`);
+            resolve(true);
+          };
+
+          deleteRequest.onerror = () => {
+            console.error('[IndexedDB] ❌ Error deleting reminder:', deleteRequest.error);
+            reject(deleteRequest.error);
+          };
+        } else if (data) {
+          console.warn(`[IndexedDB] ⚠️ Cannot delete: reminder belongs to different user`);
+          resolve(false);
+        } else {
+          console.warn(`[IndexedDB] ⚠️ Reminder not found: ${reminderId}`);
+          resolve(false);
+        }
       };
 
-      request.onerror = () => {
-        console.error('[IndexedDB] ❌ Error deleting reminder:', request.error);
-        reject(request.error);
+      getRequest.onerror = () => {
+        console.error('[IndexedDB] ❌ Error verifying reminder:', getRequest.error);
+        reject(getRequest.error);
       };
     });
   },
 
-  // Clear all reminders (useful for testing)
+  // Clear all reminders for specific user (useful for testing/logout)
+  async clearUserReminders(userId) {
+    return new Promise(async (resolve, reject) => {
+      if (!db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      if (!userId) {
+        reject(new Error('User ID is required'));
+        return;
+      }
+
+      try {
+        // Get all reminders for this user
+        const userReminders = await this.getAllReminders(userId);
+        
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const objectStore = transaction.objectStore(STORE_NAME);
+        
+        // Delete each user's reminder
+        let deletedCount = 0;
+        for (const reminder of userReminders) {
+          await new Promise((res, rej) => {
+            const deleteRequest = objectStore.delete(reminder.id);
+            deleteRequest.onsuccess = () => {
+              deletedCount++;
+              res();
+            };
+            deleteRequest.onerror = () => rej(deleteRequest.error);
+          });
+        }
+
+        console.log(`[IndexedDB] ✅ Cleared ${deletedCount} reminders for user ${userId}`);
+        resolve(deletedCount);
+      } catch (error) {
+        console.error('[IndexedDB] ❌ Error clearing user reminders:', error);
+        reject(error);
+      }
+    });
+  },
+
+  // Clear all reminders (admin/testing only - clears ALL users)
   async clearAll() {
     return new Promise((resolve, reject) => {
       if (!db) {
@@ -251,7 +363,7 @@ const IndexedDB = {
       const request = objectStore.clear();
 
       request.onsuccess = () => {
-        console.log('[IndexedDB] ✅ All reminders cleared');
+        console.log('[IndexedDB] ✅ All reminders cleared (all users)');
         resolve(true);
       };
 
@@ -262,14 +374,20 @@ const IndexedDB = {
     });
   },
 
-  // Get sync statistics (useful for debugging)
-  async getSyncStats() {
+  // Get sync statistics for specific user (useful for debugging)
+  async getSyncStats(userId) {
     return new Promise(async (resolve, reject) => {
       try {
-        const allReminders = await this.getAllReminders();
-        const unsyncedReminders = await this.getUnsyncedReminders();
+        if (!userId) {
+          reject(new Error('User ID is required'));
+          return;
+        }
+
+        const allReminders = await this.getAllReminders(userId);
+        const unsyncedReminders = await this.getUnsyncedReminders(userId);
         
         const stats = {
+          userId: userId,
           total: allReminders.length,
           synced: allReminders.filter(r => r.synced === true).length,
           unsynced: unsyncedReminders.length,
