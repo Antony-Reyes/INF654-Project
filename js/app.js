@@ -1,4 +1,4 @@
-// Main Application Controller with Authentication
+// Main Application Controller with Authentication (OFFLINE SUPPORT ADDED)
 import { FirebaseDB, AuthManager } from './firebase-config.js';
 import IndexedDB from './indexeddb.js';
 import { SyncManager, StorageManager, isOnline } from './sync.js';
@@ -9,6 +9,7 @@ const App = {
   initialized: false,
   reminders: new Map(),
   currentUser: null,
+  offlineMode: false,
 
   // Initialize the application
   async init() {
@@ -26,6 +27,9 @@ const App = {
       // Step 3: Setup UI event listeners for auth forms
       this.setupAuthFormListeners();
 
+      // Step 4: Setup online/offline event listeners
+      this.setupNetworkListeners();
+
       console.log('[App] ✅ Application initialization started (waiting for auth)');
 
     } catch (error) {
@@ -34,17 +38,74 @@ const App = {
     }
   },
 
+  // Setup network status listeners
+  setupNetworkListeners() {
+    window.addEventListener('online', () => {
+      console.log('[App] 🌐 Connection restored');
+      this.showNotification('🌐 Back online! Syncing your data...');
+      this.updateOfflineIndicator(false);
+      
+      // If user is in offline mode, try to sync
+      if (this.offlineMode && this.initialized) {
+        setTimeout(() => {
+          SyncManager.syncAll();
+        }, 1000);
+      }
+    });
+
+    window.addEventListener('offline', () => {
+      console.log('[App] 📴 Connection lost');
+      this.showNotification('📴 You are offline. Changes will be saved locally.');
+      this.updateOfflineIndicator(true);
+    });
+
+    // Initial status
+    this.updateOfflineIndicator(!navigator.onLine);
+  },
+
+  // Update offline mode indicator in UI
+  updateOfflineIndicator(offline) {
+    const userInfo = document.getElementById('user-info');
+    const existingBadge = userInfo?.querySelector('.offline-badge');
+    
+    if (offline && userInfo && !existingBadge) {
+      const badge = document.createElement('span');
+      badge.className = 'offline-badge';
+      badge.textContent = '📴 Offline';
+      badge.style.cssText = `
+        background: #e74c3c;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+        margin-left: 10px;
+      `;
+      userInfo.insertBefore(badge, userInfo.firstChild);
+    } else if (!offline && existingBadge) {
+      existingBadge.remove();
+    }
+  },
+
   // Setup authentication state listener
   setupAuthListener() {
     AuthManager.onAuthStateChange(async (user) => {
       if (user) {
-        // User is signed in
+        // User is signed in (online or offline)
         this.currentUser = user;
-        console.log('[App] ✅ User authenticated:', user.email);
+        this.offlineMode = user.offlineMode || false;
+        
+        const mode = this.offlineMode ? 'OFFLINE' : 'ONLINE';
+        console.log(`[App] ✅ User authenticated (${mode}):`, user.email);
         
         // Hide auth overlay, show main app
         this.hideAuthOverlay();
         this.showUserInfo(user);
+        
+        // Show offline indicator if in offline mode
+        if (this.offlineMode) {
+          this.updateOfflineIndicator(true);
+        }
         
         // Initialize app components
         await this.initializeAppComponents();
@@ -52,6 +113,7 @@ const App = {
       } else {
         // User is signed out
         this.currentUser = null;
+        this.offlineMode = false;
         console.log('[App] 🚪 User signed out');
         
         // Show auth overlay, hide main app
@@ -90,7 +152,10 @@ const App = {
       console.log('[App] ✅ Application initialized successfully!');
 
       this.showLoading(false);
-      this.showNotification(`✅ Welcome back, ${this.currentUser.email}!`);
+      
+      // Show appropriate welcome message
+      const mode = this.offlineMode ? '(Offline Mode)' : '';
+      this.showNotification(`✅ Welcome back, ${this.currentUser.email}! ${mode}`);
 
     } catch (error) {
       console.error('[App] ❌ Component initialization failed:', error);
@@ -161,7 +226,7 @@ const App = {
     });
   },
 
-  // Handle sign in
+  // Handle sign in (WITH OFFLINE SUPPORT)
   async handleSignIn() {
     const email = document.getElementById('signin-email').value.trim();
     const password = document.getElementById('signin-password').value;
@@ -177,11 +242,16 @@ const App = {
     const result = await AuthManager.signIn(email, password);
 
     if (result.success) {
-      console.log('[App] ✅ Sign in successful');
+      console.log(`[App] ✅ Sign in successful (${result.mode || 'online'})`);
+      
+      // Show mode-specific message
+      if (result.mode === 'offline') {
+        this.showNotification('📴 Signed in offline. Data will sync when connection is restored.');
+      }
       // Auth state listener will handle the rest
     } else {
       this.showAuthLoading(false);
-      this.showAuthError(this.getErrorMessage(result.code));
+      this.showAuthError(this.getErrorMessage(result.code, result.error));
     }
   },
 
@@ -216,13 +286,17 @@ const App = {
       // Auth state listener will handle the rest
     } else {
       this.showAuthLoading(false);
-      this.showAuthError(this.getErrorMessage(result.code));
+      this.showAuthError(this.getErrorMessage(result.code, result.error));
     }
   },
 
   // Handle logout
   async handleLogout() {
-    if (confirm('Are you sure you want to sign out?')) {
+    const message = this.offlineMode 
+      ? 'Are you sure you want to sign out? (You are in offline mode)'
+      : 'Are you sure you want to sign out?';
+      
+    if (confirm(message)) {
       console.log('[App] 🚪 User requested logout');
       this.showLoading(true);
       
@@ -311,8 +385,8 @@ const App = {
     }
   },
 
-  // Get user-friendly error message
-  getErrorMessage(code) {
+  // Get user-friendly error message (WITH OFFLINE ERROR HANDLING)
+  getErrorMessage(code, defaultMessage) {
     const errorMessages = {
       'auth/email-already-in-use': 'This email is already registered',
       'auth/invalid-email': 'Invalid email address',
@@ -320,10 +394,12 @@ const App = {
       'auth/wrong-password': 'Incorrect password',
       'auth/weak-password': 'Password should be at least 6 characters',
       'auth/network-request-failed': 'Network error. Please check your connection',
-      'auth/too-many-requests': 'Too many attempts. Please try again later'
+      'auth/too-many-requests': 'Too many attempts. Please try again later',
+      'auth/offline-signup-not-allowed': 'Cannot create new accounts while offline',
+      'auth/offline-credentials-invalid': 'Invalid credentials. Please connect to verify your account.'
     };
 
-    return errorMessages[code] || 'An error occurred. Please try again';
+    return errorMessages[code] || defaultMessage || 'An error occurred. Please try again';
   },
 
   // Clear app data on logout
@@ -713,6 +789,16 @@ style.textContent = `
   @keyframes pulseAnimation {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.05); }
+  }
+
+  .offline-badge {
+    display: inline-block;
+    animation: blink 2s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
 `;
 document.head.appendChild(style);
