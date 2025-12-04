@@ -1,6 +1,7 @@
 // IndexedDB Configuration and Operations with User-Specific Data
+// FIXED: Uses composite IDs (userId_reminderId) to prevent data overwrites between users
 const DB_NAME = 'GameRemindersDB';
-const DB_VERSION = 2; // Incremented for schema update
+const DB_VERSION = 3; // Incremented for schema update
 const STORE_NAME = 'reminders';
 
 let db = null;
@@ -33,19 +34,25 @@ const IndexedDB = {
           console.log('[IndexedDB] 🗑️ Old object store deleted for schema update');
         }
 
-        // Create object store with updated schema
-        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        // Create object store with composite key (userId_reminderId)
+        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'compositeId' });
         
         // Create indexes for efficient querying
         objectStore.createIndex('gameId', 'gameId', { unique: false });
         objectStore.createIndex('subsectionId', 'subsectionId', { unique: false });
         objectStore.createIndex('synced', 'synced', { unique: false });
         objectStore.createIndex('enabled', 'enabled', { unique: false });
-        objectStore.createIndex('userId', 'userId', { unique: false }); // NEW: User-specific index
+        objectStore.createIndex('userId', 'userId', { unique: false });
+        objectStore.createIndex('reminderId', 'reminderId', { unique: false }); // Original reminder ID
         
-        console.log('[IndexedDB] ✅ Object store created with user-specific schema');
+        console.log('[IndexedDB] ✅ Object store created with user-isolated schema');
       };
     });
+  },
+
+  // Generate composite ID (userId_reminderId)
+  getCompositeId(userId, reminderId) {
+    return `${userId}_${reminderId}`;
   },
 
   // Create or Update a reminder in IndexedDB (with userId)
@@ -64,10 +71,14 @@ const IndexedDB = {
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const objectStore = transaction.objectStore(STORE_NAME);
 
+      // CRITICAL FIX: Use composite ID to prevent overwrites between users
+      const compositeId = this.getCompositeId(userId, reminderId);
+
       const data = {
         ...reminderData,
-        id: reminderId,
-        userId: userId, // NEW: Associate with user
+        compositeId: compositeId,        // PRIMARY KEY: userId_reminderId
+        reminderId: reminderId,          // Original reminder ID (for reference)
+        userId: userId,                  // User who owns this reminder
         updatedAt: new Date().toISOString(),
         synced: reminderData.synced !== undefined ? reminderData.synced : false
       };
@@ -75,7 +86,7 @@ const IndexedDB = {
       const request = objectStore.put(data);
 
       request.onsuccess = () => {
-        console.log(`[IndexedDB] ✅ Reminder saved: ${reminderId} for user ${userId}`);
+        console.log(`[IndexedDB] ✅ Reminder saved: ${reminderId} for user ${userId} (compositeId: ${compositeId})`);
         resolve(data);
       };
 
@@ -101,20 +112,19 @@ const IndexedDB = {
 
       const transaction = db.transaction([STORE_NAME], 'readonly');
       const objectStore = transaction.objectStore(STORE_NAME);
-      const request = objectStore.get(reminderId);
+      
+      // CRITICAL FIX: Use composite ID to get the correct user's reminder
+      const compositeId = this.getCompositeId(userId, reminderId);
+      const request = objectStore.get(compositeId);
 
       request.onsuccess = () => {
         const data = request.result;
         
-        // Verify this reminder belongs to the current user
-        if (data && data.userId === userId) {
-          console.log(`[IndexedDB] ✅ Reminder retrieved: ${reminderId}`);
+        if (data) {
+          console.log(`[IndexedDB] ✅ Reminder retrieved: ${reminderId} for user ${userId}`);
           resolve(data);
-        } else if (data) {
-          console.log(`[IndexedDB] ⚠️ Reminder ${reminderId} belongs to different user`);
-          resolve(null);
         } else {
-          console.log(`[IndexedDB] ℹ️ No reminder found: ${reminderId}`);
+          console.log(`[IndexedDB] ℹ️ No reminder found: ${reminderId} for user ${userId}`);
           resolve(null);
         }
       };
@@ -157,7 +167,7 @@ const IndexedDB = {
     });
   },
 
-  // Get all unsynced reminders for specific user (using CURSOR method)
+  // Get all unsynced reminders for specific user
   async getUnsyncedReminders(userId) {
     return new Promise((resolve, reject) => {
       if (!db) {
@@ -222,19 +232,21 @@ const IndexedDB = {
 
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const objectStore = transaction.objectStore(STORE_NAME);
-      const getRequest = objectStore.get(reminderId);
+      
+      // CRITICAL FIX: Use composite ID
+      const compositeId = this.getCompositeId(userId, reminderId);
+      const getRequest = objectStore.get(compositeId);
 
       getRequest.onsuccess = () => {
         const data = getRequest.result;
         
-        // Verify this reminder belongs to the current user
-        if (data && data.userId === userId) {
+        if (data) {
           data.synced = true;
           data.syncedAt = new Date().toISOString();
           const updateRequest = objectStore.put(data);
 
           updateRequest.onsuccess = () => {
-            console.log(`[IndexedDB] ✅ Reminder marked as synced: ${reminderId}`);
+            console.log(`[IndexedDB] ✅ Reminder marked as synced: ${reminderId} for user ${userId}`);
             resolve(true);
           };
 
@@ -242,11 +254,8 @@ const IndexedDB = {
             console.error('[IndexedDB] ❌ Error marking as synced:', updateRequest.error);
             reject(updateRequest.error);
           };
-        } else if (data) {
-          console.warn(`[IndexedDB] ⚠️ Reminder ${reminderId} belongs to different user`);
-          resolve(false);
         } else {
-          console.warn(`[IndexedDB] ⚠️ Reminder not found: ${reminderId}`);
+          console.warn(`[IndexedDB] ⚠️ Reminder not found: ${reminderId} for user ${userId}`);
           resolve(false);
         }
       };
@@ -274,36 +283,18 @@ const IndexedDB = {
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const objectStore = transaction.objectStore(STORE_NAME);
       
-      // First verify the reminder belongs to this user
-      const getRequest = objectStore.get(reminderId);
+      // CRITICAL FIX: Use composite ID
+      const compositeId = this.getCompositeId(userId, reminderId);
+      const deleteRequest = objectStore.delete(compositeId);
 
-      getRequest.onsuccess = () => {
-        const data = getRequest.result;
-        
-        if (data && data.userId === userId) {
-          const deleteRequest = objectStore.delete(reminderId);
-
-          deleteRequest.onsuccess = () => {
-            console.log(`[IndexedDB] ✅ Reminder deleted: ${reminderId}`);
-            resolve(true);
-          };
-
-          deleteRequest.onerror = () => {
-            console.error('[IndexedDB] ❌ Error deleting reminder:', deleteRequest.error);
-            reject(deleteRequest.error);
-          };
-        } else if (data) {
-          console.warn(`[IndexedDB] ⚠️ Cannot delete: reminder belongs to different user`);
-          resolve(false);
-        } else {
-          console.warn(`[IndexedDB] ⚠️ Reminder not found: ${reminderId}`);
-          resolve(false);
-        }
+      deleteRequest.onsuccess = () => {
+        console.log(`[IndexedDB] ✅ Reminder deleted: ${reminderId} for user ${userId}`);
+        resolve(true);
       };
 
-      getRequest.onerror = () => {
-        console.error('[IndexedDB] ❌ Error verifying reminder:', getRequest.error);
-        reject(getRequest.error);
+      deleteRequest.onerror = () => {
+        console.error('[IndexedDB] ❌ Error deleting reminder:', deleteRequest.error);
+        reject(deleteRequest.error);
       };
     });
   },
@@ -328,11 +319,11 @@ const IndexedDB = {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const objectStore = transaction.objectStore(STORE_NAME);
         
-        // Delete each user's reminder
+        // Delete each user's reminder using composite ID
         let deletedCount = 0;
         for (const reminder of userReminders) {
           await new Promise((res, rej) => {
-            const deleteRequest = objectStore.delete(reminder.id);
+            const deleteRequest = objectStore.delete(reminder.compositeId);
             deleteRequest.onsuccess = () => {
               deletedCount++;
               res();
